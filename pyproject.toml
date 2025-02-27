@@ -1,0 +1,23 @@
+[project]
+name = "crewai-rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb",
+    "crewai>=0.10.2",
+    "dotenv>=0.9.9",
+    "gitpython",
+    "langchain",
+    "langchain-chroma>=0.2.2",
+    "langchain-community>=0.3.18",
+    "langchain-google-genai>=2.0.11",
+]
+
+[project.scripts]
+crewai-rag = "crewai_rag.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
