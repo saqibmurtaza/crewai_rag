@@ -1,76 +1,23 @@
-from crewai import Agent, Crew, Process, Task
-from langchain_google_genai import GoogleGenerativeAIEmbeddings  # ✅ Correct
-from langchain_community.document_loaders import GitLoader
-from langchain_chroma import Chroma
-from dotenv import load_dotenv
-import chromadb, os
+from crewai_rag.crew_setup import crew
+import subprocess, os
 
-load_dotenv()
+study_material_path = "./study_material"
 
-api_key= os.getenv('GOOGLE_API_KEY')
-print(f"Loaded API Key: {api_key[:5]}...")  # Verify API Key
+# Find all .md, .txt, and .pdf files recursively
+all_files = list(study_material_path.rglob("*.md")) + list(study_material_path.rglob("*.txt")) + list(study_material_path.rglob("*.pdf"))
+print("📂 Found Files:", [str(f) for f in all_files])
 
-
-# Load text-based study material from a GitHub repo
-loader= GitLoader(
-    clone_url="https://github.com/panaversity/learn-modern-ai-python",
-    repo_path="E:\\saqib\\crewai_rag\\crewai_rag\\study_material",
-    branch="main",
-    file_filter=lambda x: x.endswith(".md") or x.endswith(".txt")  # Load only text-based files
-)
-
-# Initialize ChromaDB with Google's embedding model
-vector_db = Chroma(
-    persist_directory="./chroma_db", 
-    embedding_function=GoogleGenerativeAIEmbeddings(
-        model="models/textembedding-gecko-001",
-        google_api_key=api_key
-        )
-)
+if not os.path.exists(study_material_path):
+    try:
+        print(f"📂 'study_material' directory not found. Cloning from GitHub...")
+        subprocess.run(["git", "clone", "https://github.com/panaversity/learn-modern-ai-python", study_material_path], check=True)
+        print(f"✅ Cloned repository into {study_material_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error cloning repository: {e}")
 
 
-# Load documents from the repo
-docs = loader.load()
-
-# Storing Git-Based Content in ChromaDB for RAG
-
-
-# AGENTS
-retrieval_agent= Agent(
-    role="Retrieval",
-    goal="Fetch relevant study material",
-    backstory="Finds the best matching content for question generation",
-    llm={"model": "gemini/gemini-1.5-flash"},
-    api_key= api_key
-)
-
-mcq_gen_agent= Agent(
-    role="MCQ Generator",
-    goal="Generate high-quality MCQs",
-    backstory="Generate high-quality multiple choice questions from retrieved content",
-    llm={"model": "gemini/gemini-1.5-flash"},
-    api_key= api_key
-)
-
-# TASKS
-retrieval_agent_task= Task(
-    description="Retrieve relevant study material",
-    agent=retrieval_agent
-    )
-
-mcq_gen_agent_task= Task(
-    description="Generate high_quality multiple choice questions",
-    context=retrieval_agent_task,
-    agent=mcq_gen_agent
-)
-
-# CREW
-my_crew= Crew(
-    agents=[retrieval_agent, mcq_gen_agent],
-    tasks=[retrieval_agent_task, mcq_gen_agent_task],
-)
 
 # RUN CREW
 
-result= my_crew.kickoff()
+result= crew.kickoff()
 print(result)

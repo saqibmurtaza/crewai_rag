@@ -7,12 +7,14 @@ requires-python = ">=3.12"
 dependencies = [
     "chromadb",
     "crewai>=0.10.2",
+    "crewai[tools]>=0.100.1,<1.0.0",
     "dotenv>=0.9.9",
     "gitpython",
     "langchain",
     "langchain-chroma>=0.2.2",
     "langchain-community>=0.3.18",
     "langchain-google-genai>=2.0.11",
+    "litellm>=1.60.2",
 ]
 
 [project.scripts]

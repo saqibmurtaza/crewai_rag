@@ -1,0 +1,99 @@
+from crewai import Agent, Crew, Process, Task
+from litellm import embedding
+from langchain_community.document_loaders import GitLoader
+from langchain_chroma import Chroma
+from dotenv import load_dotenv
+from litellm import completion
+import chromadb, os
+
+load_dotenv()
+
+api_key= os.getenv('GEMINI_API_KEY')
+print(f"Loaded API Key: {api_key[:5]}...")  # Verify API Key
+
+
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma_client.get_or_create_collection(name="study_material")
+
+
+# Load text-based study material from a GitHub repo
+loader= GitLoader(
+    clone_url="https://github.com/panaversity/learn-modern-ai-python",
+    repo_path=r"F:\crewai_rag\crewai_rag\study_material",
+    branch="main",
+    file_filter=lambda x: x.endswith(".md") or x.endswith(".txt")  # Load only text-based files
+)
+
+# Initialize ChromaDB with Google's embedding model
+# Initialize ChromaDB with embeddings
+vector_db = Chroma(
+    persist_directory="./chroma_db",
+    embedding_function=lambda texts: embedding(
+        model="gemini/text-embedding-004",
+        input=texts,
+        api_key=api_key
+    )["data"]  # ✅ Extract embeddings list
+)# Initialize ChromaDB with embeddings
+vector_db = Chroma(
+    persist_directory="./chroma_db",
+    embedding_function=lambda texts: embedding(
+        model="gemini/text-embedding-004",
+        input=texts,
+        api_key=api_key
+    )["data"]  # ✅ Extract embeddings list
+)
+
+# Load documents from the repo
+docs = loader.load()
+
+
+# AGENTS
+retrieval_agent = Agent(
+    role="Retrieval",
+    goal="Fetch relevant study material",
+    backstory="Finds the best matching content for question generation",
+    llm=lambda prompt: completion(  # ✅ Ensure model is passed correctly
+        model="gemini/gemini-1.5-flash",
+        messages=[{"role": "user", "content": prompt}],
+        api_key=api_key
+    )["choices"][0]["message"]["content"],  # ✅ Extract response text
+)
+
+mcq_gen_agent = Agent(
+    role="MCQ Generator",
+    goal="Generate high-quality MCQs",
+    backstory="Generate high-quality multiple choice questions from retrieved content",
+    llm=lambda prompt: completion(
+        model="gemini/gemini-1.5-flash",
+        messages=[{"role": "user", "content": prompt}],
+        api_key=api_key
+    )["choices"][0]["message"]["content"],
+)
+
+
+# TASKS
+retrieval_agent_task= Task(
+    description="Retrieve relevant study material",
+    agent=retrieval_agent,
+    expected_output="A list of relevant study materials extracted from the database"
+    )
+
+mcq_gen_agent_task= Task(
+    description="Generate high_quality multiple choice questions",
+    context=[retrieval_agent_task],
+    agent=mcq_gen_agent,
+    expected_output="A set of multiple-choice questions along with correct answers and explanations"
+)
+
+# CREW
+my_crew= Crew(
+    agents=[retrieval_agent, mcq_gen_agent],
+    tasks=[retrieval_agent_task, mcq_gen_agent_task],
+)
+
+# RUN CREW
+
+result= my_crew.kickoff()
+print(result)
+
+
