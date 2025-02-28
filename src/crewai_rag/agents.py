@@ -1,8 +1,10 @@
 from crewai import Agent
 from crewai_rag.tools.text_search_tool import TextSearchTool
+from crewai_rag.file_selector import uploaded_file_path 
 
-# Create an instance of the tool (instead of passing the class)
-text_search_tool = TextSearchTool(directory="./study_material")
+# ✅ Initialize text search tool with the uploaded file
+text_search_tool = TextSearchTool()
+
 
 # Research Agent for searching text-based study material
 retrieval_agent  = Agent(
